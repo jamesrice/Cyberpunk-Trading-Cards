@@ -2,11 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { DraggableCardContainer, DraggableCardBody } from './ui/draggable-card';
 import { cn } from '../lib/utils';
 import { PanInfo, motion } from 'framer-motion';
 import type { CardData } from '../services/geminiService';
+import { toJpeg } from 'html-to-image';
 
 type ImageStatus = 'pending' | 'done' | 'error';
 
@@ -18,7 +19,7 @@ interface CyberCardProps {
     cardData?: CardData;
     dragConstraintsRef?: React.RefObject<HTMLElement>;
     onShake?: (caption: string) => void;
-    onDownload?: (caption: string) => void;
+    onDownload?: (dataUrl: string, caption: string) => void;
     onInteractionStart?: () => void;
     isMobile?: boolean;
     origin?: string;
@@ -61,10 +62,13 @@ const Placeholder = () => (
 );
 
 
-const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error, cardData, dragConstraintsRef, onShake, onDownload, onInteractionStart, isMobile, origin, creator, traits }) => {
+const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, caption, status, error, cardData, dragConstraintsRef, onShake, onDownload, onInteractionStart, isMobile, origin, creator, traits }, ref) => {
     const [isDeveloped, setIsDeveloped] = useState(false);
     const [isImageLoaded, setIsImageLoaded] = useState(false);
     const [isFlipped, setIsFlipped] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const cardRef = useRef<HTMLDivElement>(null);
+    const frontFaceRef = useRef<HTMLDivElement>(null);
     
     const lastShakeTime = useRef(0);
     const lastVelocity = useRef({ x: 0, y: 0 });
@@ -113,6 +117,26 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
         setIsFlipped(prev => !prev);
     };
 
+    const handleDownload = async () => {
+        if (!frontFaceRef.current || !onDownload || isDownloading) {
+            return;
+        }
+        setIsDownloading(true);
+
+        try {
+            await document.fonts.ready;
+            const dataUrl = await toJpeg(frontFaceRef.current, {
+                quality: 0.95,
+                pixelRatio: 2, // For higher resolution output
+            });
+            onDownload(dataUrl, caption);
+        } catch (err) {
+            console.error('Failed to capture card image:', err);
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     const cardInnerContent = (
         <div className="w-full bg-neutral-800 shadow-inner flex-grow relative overflow-hidden group">
             {status === 'pending' && <LoadingSpinner />}
@@ -125,13 +149,21 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
                     )}>
                         {onDownload && (
                             <button
-                                onClick={(e) => { e.stopPropagation(); onDownload(caption); }}
-                                className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+                                onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                                disabled={isDownloading}
+                                className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed"
                                 aria-label={`Download image for ${caption}`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
+                                {isDownloading ? (
+                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                )}
                             </button>
                         )}
                          {isMobile && onShake && (
@@ -140,8 +172,34 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
                                 className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
                                 aria-label={`Regenerate image for ${caption}`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.899 2.186l-1.42.71a5.002 5.002 0 00-8.479-1.554H10a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm12 14a1 1 0 01-1-1v-2.101a7.002 7.002 0 01-11.899-2.186l1.42-.71a5.002 5.002 0 008.479 1.554H10a1 1 0 110-2h6a1 1 0 011 1v6a1 1 0 01-1 1z" clipRule="evenodd" />
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 32 32">
+                                    <defs>
+                                        <marker
+                                            id="regenerate-arrow-head"
+                                            viewBox="0 0 10 10"
+                                            refX="8"
+                                            refY="5"
+                                            markerWidth="4"
+                                            markerHeight="4"
+                                            orient="auto-start-reverse">
+                                            <path d="M 0 0 L 10 5 L 0 10 z" fill="black"></path>
+                                        </marker>
+                                    </defs>
+                                    <circle cx="16" cy="16" r="15" stroke="black" strokeWidth="2" fill="#d1d5db" />
+                                    <path
+                                        d="M 24 19 A 8 8 0 1 1 19 8"
+                                        stroke="black"
+                                        strokeWidth="3.5"
+                                        fill="none"
+                                        markerEnd="url(#regenerate-arrow-head)"
+                                    />
+                                    <path
+                                        d="M 8 13 A 8 8 0 1 1 13 24"
+                                        stroke="black"
+                                        strokeWidth="3.5"
+                                        fill="none"
+                                        markerEnd="url(#regenerate-arrow-head)"
+                                    />
                                 </svg>
                             </button>
                         )}
@@ -170,7 +228,19 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
     );
 
     const frontFace = (
-      <div className="absolute w-full h-full bg-neutral-900 p-2 rounded-md shadow-lg" style={{ backfaceVisibility: 'hidden' }}>
+      <div 
+        ref={(node) => {
+            // Assign to internal ref for individual download
+            (frontFaceRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            // Assign to forwarded ref for "Download All"
+            if (typeof ref === 'function') {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
+        }}
+        className="absolute w-full h-full bg-neutral-900 p-2 rounded-md shadow-lg" style={{ backfaceVisibility: 'hidden' }}
+      >
         <div className="relative w-full h-full border-2 border-neutral-700/50 flex flex-col overflow-hidden">
           {/* Neon Glow Effect */}
           <div className="absolute -inset-1 rounded-md bg-fuchsia-500/80 blur-lg -z-10"></div>
@@ -200,20 +270,22 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
           </div>
 
           {/* Footer */}
-          <footer className="px-3 pb-2 pt-1 bg-black/30 backdrop-blur-sm border-t-2 border-neutral-700/50">
-              <div className="bg-neutral-900/70 p-2 border border-neutral-600/80">
-                  <h3 className="font-permanent-marker text-sm text-yellow-400 uppercase tracking-wider">
-                    {cardData?.abilityName || '...'}
-                  </h3>
-                  <p className="font-roboto-mono text-xs text-neutral-300 leading-tight mt-1 h-10">
-                    {cardData?.abilityDescription || '...'}
-                  </p>
-              </div>
-              <div className="flex justify-between items-center mt-1 font-roboto-mono text-xs text-neutral-400">
-                  <p>DEF: {cardData?.defense || 0}</p>
-                  <p>{cardData?.serialNumber || '...'}</p>
-              </div>
-          </footer>
+          {caption !== "Click to begin" && (
+            <footer className="px-3 pb-2 pt-1 bg-black/30 backdrop-blur-sm border-t-2 border-neutral-700/50">
+                <div className="bg-neutral-900/70 p-2 border border-neutral-600/80">
+                    <h3 className="font-permanent-marker text-sm text-yellow-400 uppercase tracking-wider">
+                      {cardData?.abilityName || '...'}
+                    </h3>
+                    <p className="font-roboto-mono text-xs text-neutral-300 leading-tight mt-1 h-10">
+                      {cardData?.abilityDescription || '...'}
+                    </p>
+                </div>
+                <div className="flex justify-between items-center mt-1 font-roboto-mono text-xs text-neutral-400">
+                    <p>DEF: {cardData?.defense || 0}</p>
+                    <p>{cardData?.serialNumber || '...'}</p>
+                </div>
+            </footer>
+          )}
         </div>
       </div>
     );
@@ -236,6 +308,7 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
         return (
             <div className={cn(cardDimensions, "w-full max-w-sm")} style={{ perspective: '1000px' }} onClick={handleFlip}>
                 <motion.div 
+                    ref={cardRef}
                     className="relative w-full h-full"
                     style={{ transformStyle: 'preserve-3d' }}
                     animate={{ rotateY: isFlipped ? 180 : 0 }}
@@ -259,6 +332,7 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
                 onInteractionStart={onInteractionStart}
             >
                 <motion.div
+                    ref={cardRef}
                     className="w-full h-full"
                     style={{ transformStyle: 'preserve-3d' }}
                     animate={{ rotateY: isFlipped ? 180 : 0 }}
@@ -270,6 +344,6 @@ const CyberCard: React.FC<CyberCardProps> = ({ imageUrl, caption, status, error,
             </DraggableCardBody>
         </DraggableCardContainer>
     );
-};
+});
 
 export default CyberCard;

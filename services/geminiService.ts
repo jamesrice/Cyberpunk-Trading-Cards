@@ -66,6 +66,23 @@ const MOODS = [
   'Paranoid and alert'
 ];
 
+const CAMERA_STYLES = [
+  'Shot on a Sony A7R IV with a Zeiss Planar T* 85mm f/1.4 lens. Emulate the fine grain and color science of Kodak Portra 400 film.',
+  'Photographed with a Hasselblad X1D II 50C, 90mm f/3.2 lens. The image should have the deep, moody tones and fine detail characteristic of Fujifilm Pro 400H film stock.',
+  'Captured on a Leica M11 with a Summilux-M 50mm f/1.4 ASPH lens. Replicate the sharp, cinematic look and natural color rendering of CineStill 800T film.',
+  'Shot with a Canon EOS R5 and a RF 85mm f/1.2 L USM lens. The aesthetic should mimic the vibrant, saturated look of Kodak Ektar 100 film, with extremely fine grain.',
+  'Photographed on a Phase One XF IQ4 150MP with a Schneider Kreuznach 110mm LS f/2.8 lens. Emulate the unparalleled detail and subtle color palette of medium format digital photography, with a touch of filmic grain.'
+];
+
+const LIGHTING_SETUPS = [
+  'Cinematic three-point lighting. A large, diffused octabox softbox as the key light, positioned 45 degrees from the subject to create soft facial shadows. A gridded strip light for a sharp rim light, separating the character from the background. A large white reflector for subtle fill.',
+  'Dramatic Rembrandt lighting using a single, gridded beauty dish positioned high and to the side, creating a triangle of light on the cheek. A V-flat reflector on the opposite side to gently lift shadows. The background is lit separately with a blue gelled strobe.',
+  'High-fashion clamshell lighting. Two softboxes, one above and one below the subject\'s face, creating a flattering, near-shadowless look. Edge lights with magenta gels on either side to define the subject\'s form.',
+  'Hard, edgy lighting from a single bare-bulb strobe placed slightly above and to one side, creating deep, defined shadows and specular highlights on chrome and skin. A large black flag is used to increase contrast by absorbing bounce light.',
+  'Cross-lighting setup with two gridded strip boxes on either side of the subject, slightly behind them. This carves out their shape with bright rim lights, leaving the front in relative shadow, filled only by ambient bounce from a white floor.'
+];
+
+
 interface ArchetypeSpecifics {
     prop: string;
     costume: string;
@@ -224,16 +241,18 @@ function createPrompt(archetype: Archetype): string {
     const randomStudioElement = getRandomElement(STUDIO_ELEMENTS);
     const randomBackground = getRandomElement(BACKGROUNDS);
     const randomMood = getRandomElement(MOODS);
+    const randomCameraStyle = getRandomElement(CAMERA_STYLES);
+    const randomLightingSetup = getRandomElement(LIGHTING_SETUPS);
 
     return `Award-winning, hyperrealistic, professional full-body studio photograph of a single cyberpunk character.
 
-PHOTOGRAPHY STYLE: Raw, authentic, hyperrealistic studio portrait. Studio photography, fashion photography.Captured with a professional DSLR camera, 85mm f/1.8 lens, sharp focus on the eyes and cybernetics.
+PHOTOGRAPHY STYLE: Raw, authentic, hyperrealistic studio portrait. ${randomCameraStyle} Sharp focus on the eyes and cybernetics.
 
-NEGATIVE PROMPT (STRICT): NO illustrations, paintings, CGI, 3D renders, anime, cartoons, airbrushing, or any non-photographic styles.  Not a render or digital painting. The output MUST be indistinguishable from a real photo. Any hint of digital art is a failure.
+NEGATIVE PROMPT (STRICT): NO illustrations, paintings, CGI, 3D renders, anime, cartoons, airbrushing. NO plastic-looking skin, NO overly smooth surfaces, NO video game aesthetics, NO Unreal Engine or Octane render look, NO perfect symmetry. The output MUST be indistinguishable from a real photo. Any hint of digital art is a failure.
 
 CHARACTER ARCHETYPE: ${archetype.description}.
 
-AUGMENTATION DETAILS: All cyberware must appear surgically integrated into the facial structure and body—not overlaid. Chrome and prosthetics should show realistic material properties with PBR shaders: reflections, fingerprints, scratches, wear, and panel seams. Glowing elements (if present) emit subtle colored light affecting nearby skin tones.
+AUGMENTATION DETAILS: All cyberware must appear surgically integrated into the facial structure and body—not overlaid. Chrome and prosthetics should show realistic material properties with PBR shaders: reflections, fingerprints, micro-scratches, wear, and panel seams. Include subtle real-world details like the reflection of the studio softbox in the character's cybernetic eyes. Glowing elements (if present) emit subtle colored light affecting nearby skin tones.
 
 PROP AND ACTION: The character is ${prop}. The prop's style should match the character archetype's aesthetic.
 
@@ -241,16 +260,17 @@ STUDIO ELEMENT: ${randomStudioElement}.
 
 BACKGROUND: ${randomBackground}.
 
-LIGHTING SETUP: Professional multi-point flash lighting – bright highlights on character's chrome augments and prop, sharp catch-lights in cybernetic eyes, soft shadows for depth and dimensionality, hair light separating subject from background. The lighting must be clean, professional, and enhance the realism without distracting volumetric effects or lens flares.
+LIGHTING SETUP: ${randomLightingSetup} The lighting must be clean, professional, and enhance the realism without distracting volumetric effects or lens flares. Include subtle real-world details like faint dust motes caught in the light beams.
 
 MOOD: ${randomMood}.
 
-COSTUME DETAILS: ${costume}.
+COSTUME DETAILS: ${costume}. Clothing should show realistic fabric textures, creases, and subtle wear.
 
-FACIAL INTEGRATION CRITICAL: The uploaded face must be seamlessly composited with: correct perspective matching body pose, lighting continuity across all facial features, cyberware appearing to emerge from or replace facial structures authentically, skin tone consistency between face and visible body parts, appropriate aging and weathering matching archetype, and authentic expressions (not generic smile—match mood). The final composite must maintain realistic skin texture including pores and fine lines.
+FACIAL INTEGRATION CRITICAL: The uploaded face must be seamlessly composited with: correct perspective matching body pose, lighting continuity across all facial features, cyberware appearing to emerge from or replace facial structures authentically, skin tone consistency between face and visible body parts, appropriate aging and weathering matching archetype, and authentic expressions (not generic smile—match mood). The final composite must maintain realistic skin texture with visible pores, subtle micro-blemishes, and natural asymmetry.
 
 Final output must be an ultra-detailed professional fashion photograph, cinematic color grading with a cyberpunk color palette, sharp focus on face and augmentations, professional retouching that maintains skin texture and mechanical detail, 8K resolution quality.`;
 }
+
 
 /**
  * Processes the Gemini API response, extracting the image or throwing an error if none is found.

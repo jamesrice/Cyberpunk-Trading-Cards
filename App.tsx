@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 import GlitchBackground from './components/GlitchBackground';
 import type { Archetype, CardData } from './services/geminiService';
 import CyberculturePage from './components/CyberculturePage';
+import { cn } from './lib/utils';
 
 const ARCHETYPES: Archetype[] = [
     // Original 6
@@ -184,7 +185,7 @@ interface GeneratedImage {
     cardData?: CardData;
 }
 
-const primaryButtonClasses = "font-permanent-marker text-xl text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)]";
+const primaryButtonClasses = "font-permanent-marker text-xl text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-yellow-600 disabled:transform-none";
 export const secondaryButtonClasses = "font-permanent-marker text-xl text-center text-white bg-white/10 backdrop-blur-sm border-2 border-white/80 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:rotate-2 hover:bg-white hover:text-black";
 
 const useMediaQuery = (query: string) => {
@@ -210,6 +211,7 @@ function App() {
     const [zIndices, setZIndices] = useState<Record<string, number>>({});
     const zIndexCounter = useRef(10);
     const dragAreaRef = useRef<HTMLDivElement>(null);
+    const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [view, setView] = useState<'main' | 'cyberculture'>('main');
 
@@ -250,6 +252,7 @@ function App() {
             }
         }
         setSessionArchetypes(sampledArchetypes);
+        cardRefs.current = {}; // Reset refs on new generation
 
         // Initialize z-indices
         const initialZIndices: Record<string, number> = {};
@@ -307,46 +310,78 @@ function App() {
         setAppState('results-shown');
     };
 
-    const handleRegenerateArchetype = async (title: string) => {
+    const handleRegenerateArchetype = async (oldTitle: string) => {
         if (!uploadedImage) return;
-
-        // Prevent re-triggering if a generation is already in progress
-        if (generatedImages[title]?.status === 'pending') {
+    
+        // Prevent re-triggering if a generation is already in progress for the card
+        if (generatedImages[oldTitle]?.status === 'pending') {
             return;
         }
+    
+        // Find a new archetype not currently in the session
+        const currentTitles = sessionArchetypes.map(a => a.title);
+        const availableArchetypes = ARCHETYPES.filter(a => !currentTitles.includes(a.title));
         
-        const archetype = ARCHETYPES.find(a => a.title === title);
-        if (!archetype) {
-            console.error(`Could not find archetype for title: ${title}`);
+        let newArchetype: Archetype | undefined;
+    
+        if (availableArchetypes.length > 0) {
+            newArchetype = availableArchetypes[Math.floor(Math.random() * availableArchetypes.length)];
+        } else {
+            // Fallback if all archetypes are somehow on screen (shouldn't happen with 6/20)
+            const fallbackArchetypes = ARCHETYPES.filter(a => a.title !== oldTitle);
+            if (fallbackArchetypes.length > 0) {
+                newArchetype = fallbackArchetypes[Math.floor(Math.random() * fallbackArchetypes.length)];
+            }
+        }
+    
+        if (!newArchetype) {
+            console.error("Could not find a new archetype to generate.");
             return;
         }
-        
-        console.log(`Regenerating image for ${archetype.title}...`);
-
-        setGeneratedImages(prev => ({
-            ...prev,
-            [archetype.title]: { ...prev[archetype.title], status: 'pending' },
-        }));
-
+    
+        const finalNewArchetype = newArchetype; // To satisfy typescript inside closures
+    
+        console.log(`Regenerating card... Replacing '${oldTitle}' with '${finalNewArchetype.title}'`);
+    
+        // Update states to replace the old archetype with the new one
+        setSessionArchetypes(prev => prev.map(a => a.title === oldTitle ? finalNewArchetype : a));
+    
+        setZIndices(prev => {
+            const newZ = { ...prev };
+            if (newZ[oldTitle] !== undefined) {
+                newZ[finalNewArchetype.title] = newZ[oldTitle];
+                delete newZ[oldTitle];
+            }
+            return newZ;
+        });
+    
+        setGeneratedImages(prev => {
+            const newImages = { ...prev };
+            delete newImages[oldTitle];
+            newImages[finalNewArchetype.title] = { status: 'pending' };
+            return newImages;
+        });
+    
         try {
-             // Generate image and data in parallel
+            // Generate image and data for the new archetype in parallel
             const [resultUrl, cardData] = await Promise.all([
-                generateStyledImage(uploadedImage, archetype),
-                generateCardData(archetype)
+                generateStyledImage(uploadedImage, finalNewArchetype),
+                generateCardData(finalNewArchetype)
             ]);
-
+    
             setGeneratedImages(prev => ({
                 ...prev,
-                [archetype.title]: { status: 'done', url: resultUrl, cardData: cardData },
+                [finalNewArchetype.title]: { status: 'done', url: resultUrl, cardData: cardData },
             }));
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-            const cardData = await generateCardData(archetype);
+            console.error(`Failed to generate new card for ${finalNewArchetype.title}:`, err);
+            // Even on error, fetch card data to display something
+            const cardData = await generateCardData(finalNewArchetype);
             setGeneratedImages(prev => ({
                 ...prev,
-                [archetype.title]: { status: 'error', error: errorMessage, cardData },
+                [finalNewArchetype.title]: { status: 'error', error: errorMessage, cardData },
             }));
-            console.error(`Failed to regenerate image for ${archetype.title}:`, err);
         }
     };
     
@@ -356,13 +391,13 @@ function App() {
         setSessionArchetypes([]);
         setZIndices({});
         setAppState('idle');
+        setView('main');
     };
 
-    const handleDownloadIndividualImage = (title: string) => {
-        const image = generatedImages[title];
-        if (image?.status === 'done' && image.url) {
+    const handleDownloadIndividualImage = (dataUrl: string, title: string) => {
+        if (dataUrl) {
             const link = document.createElement('a');
-            link.href = image.url;
+            link.href = dataUrl;
             link.download = `cyberpunk-persona-${title.toLowerCase().replace(/\s/g, '-')}.jpg`;
             document.body.appendChild(link);
             link.click();
@@ -370,15 +405,27 @@ function App() {
         }
     };
 
+    const mainContentContainerClasses = cn(
+        "z-10 flex flex-col items-center w-full h-full flex-1 min-h-0",
+        (appState === 'generating' || appState === 'results-shown') ? 'justify-start pt-10' : 'justify-center'
+    );
+
     return (
-        <main className="text-neutral-200 min-h-screen w-full flex flex-col items-center justify-center p-4 pb-24 overflow-hidden relative">
+        <main className="text-neutral-200 min-h-screen w-full flex flex-col items-center p-4 pb-24 relative">
             <GlitchBackground />
             
             {view === 'main' ? (
-                <div className="z-10 flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
+                <div className={mainContentContainerClasses}>
                     <div className="text-center mb-10">
-                        <h1 className="text-6xl md:text-8xl font-nabla text-neutral-100">Cyberpunk Trading Cards</h1>
-                        <p className="font-permanent-marker text-neutral-300 mt-2 text-xl tracking-wide">Generate your own custom cards from the dark future.</p>
+                        <h1 className="font-orbitron text-neutral-100">
+                            <span className="text-6xl md:text-8xl">Cyberpunk</span>
+                            <span className="text-4xl md:text-8xl"> Trading Cards</span>
+                        </h1>
+                        <p className="font-permanent-marker text-neutral-300 mt-2 text-xl tracking-wide">
+                            {(appState === 'generating' || appState === 'results-shown')
+                                ? "Explore your cyberpunk avatars"
+                                : "Generate your own dark future from a photo"}
+                        </p>
                     </div>
 
                     {appState === 'idle' && (
@@ -422,20 +469,22 @@ function App() {
                     )}
 
                     {appState === 'image-uploaded' && uploadedImage && (
-                        <div className="flex flex-col items-center gap-6">
-                            <CyberCard 
-                                imageUrl={uploadedImage} 
-                                caption="Your Photo" 
-                                status="done"
-                            />
-                            <div className="flex items-center gap-4 mt-4">
-                                <button onClick={handleReset} className={secondaryButtonClasses}>
-                                    Different Photo
-                                </button>
-                                <button onClick={handleGenerateClick} className={primaryButtonClasses}>
-                                    Generate
-                                </button>
+                        <div className="flex flex-col items-center">
+                            <div className="relative mb-14">
+                                <CyberCard 
+                                    imageUrl={uploadedImage} 
+                                    caption="Your Photo" 
+                                    status="done"
+                                />
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
+                                    <button onClick={handleGenerateClick} className={primaryButtonClasses}>
+                                        Generate
+                                    </button>
+                                </div>
                             </div>
+                            <button onClick={handleReset} className={secondaryButtonClasses}>
+                                Change Photo
+                            </button>
                         </div>
                     )}
 
@@ -446,6 +495,7 @@ function App() {
                                     {sessionArchetypes.map((archetype) => (
                                         <div key={archetype.title} className="flex justify-center">
                                             <CyberCard
+                                                ref={el => { cardRefs.current[archetype.title] = el; }}
                                                 caption={archetype.title}
                                                 status={generatedImages[archetype.title]?.status || 'pending'}
                                                 imageUrl={generatedImages[archetype.title]?.url}
@@ -480,6 +530,7 @@ function App() {
                                                 transition={{ type: 'spring', stiffness: 100, damping: 20, delay: index * 0.15 }}
                                             >
                                                 <CyberCard 
+                                                    ref={el => { cardRefs.current[archetype.title] = el; }}
                                                     dragConstraintsRef={dragAreaRef}
                                                     caption={archetype.title}
                                                     status={generatedImages[archetype.title]?.status || 'pending'}
@@ -499,22 +550,13 @@ function App() {
                                     })}
                                 </div>
                             )}
-                            <div className="h-20 mt-4 flex items-center justify-center">
-                                {appState === 'results-shown' && (
-                                    <div className="flex flex-col sm:flex-row items-center gap-4">
-                                        <button onClick={handleReset} className={secondaryButtonClasses}>
-                                            Start Over
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
                         </>
                     )}
                 </div>
             ) : (
                 <CyberculturePage onBack={() => setView('main')} />
             )}
-            <Footer onShowCyberculture={() => setView('cyberculture')} />
+            <Footer onShowCyberculture={() => setView('cyberculture')} onStartOver={handleReset} />
         </main>
     );
 }

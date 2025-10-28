@@ -43,8 +43,8 @@ const GlitchBackground = React.memo(() => {
     useEffect(() => {
         const updateDimensions = () => {
             // Approximate char dimensions. This doesn't need to be perfect.
-            const charWidth = 9.6; // font-roboto-mono text-base
-            const charHeight = 20; // line-height-tight (1.25 * 16px)
+            const charWidth = 8; // font-roboto-mono text-sm
+            const charHeight = 17.5; // line-height-tight (1.25 * 14px)
             dimensions.current = {
                 // Add a larger buffer to ensure full coverage, as calculations can be off
                 // due to font rendering, scrollbars, etc. Excess is hidden by overflow:hidden.
@@ -78,7 +78,7 @@ const GlitchBackground = React.memo(() => {
     return (
         <pre
             aria-hidden="true"
-            className="fixed top-0 left-0 w-screen h-screen text-[#222] bg-black font-roboto-mono text-base leading-tight overflow-hidden pointer-events-none"
+            className="fixed top-0 left-0 w-screen h-screen text-yellow-400/20 bg-black font-roboto-mono text-sm leading-tight overflow-hidden pointer-events-none"
         >
             {glitchText}
         </pre>
