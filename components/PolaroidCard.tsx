@@ -172,34 +172,8 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
                                 className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
                                 aria-label={`Regenerate image for ${caption}`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 32 32">
-                                    <defs>
-                                        <marker
-                                            id="regenerate-arrow-head"
-                                            viewBox="0 0 10 10"
-                                            refX="8"
-                                            refY="5"
-                                            markerWidth="4"
-                                            markerHeight="4"
-                                            orient="auto-start-reverse">
-                                            <path d="M 0 0 L 10 5 L 0 10 z" fill="black"></path>
-                                        </marker>
-                                    </defs>
-                                    <circle cx="16" cy="16" r="15" stroke="black" strokeWidth="2" fill="#d1d5db" />
-                                    <path
-                                        d="M 24 19 A 8 8 0 1 1 19 8"
-                                        stroke="black"
-                                        strokeWidth="3.5"
-                                        fill="none"
-                                        markerEnd="url(#regenerate-arrow-head)"
-                                    />
-                                    <path
-                                        d="M 8 13 A 8 8 0 1 1 13 24"
-                                        stroke="black"
-                                        strokeWidth="3.5"
-                                        fill="none"
-                                        markerEnd="url(#regenerate-arrow-head)"
-                                    />
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 32 32" fill="currentColor">
+                                    <path d="M16 2A14 14 0 1 0 26.1 23.3l-4.2-2.4A10 10 0 1 1 16 6V1l-7 6 7 6V6Z" />
                                 </svg>
                             </button>
                         )}
