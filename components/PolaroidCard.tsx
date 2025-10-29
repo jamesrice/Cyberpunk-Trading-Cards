@@ -144,8 +144,7 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
             {status === 'done' && imageUrl && (
                 <>
                     <div className={cn(
-                        "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
-                        !isMobile && "opacity-0 group-hover:opacity-100",
+                        "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300"
                     )}>
                         {onDownload && (
                             <button
@@ -166,7 +165,7 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
                                 )}
                             </button>
                         )}
-                         {isMobile && onShake && (
+                         {onShake && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onShake(caption); }}
                                 className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
