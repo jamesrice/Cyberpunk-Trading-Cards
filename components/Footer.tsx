@@ -31,14 +31,14 @@ const Footer: React.FC<FooterProps> = ({ onShowCyberculture, onStartOver }) => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onShowCyberculture}
-                        className="text-yellow-400 hover:text-yellow-300 transition-colors duration-200 font-permanent-marker tracking-wide"
+                        className="text-yellow-400 hover:text-yellow-300 transition-colors duration-200 font-orbitron tracking-wide"
                     >
                         What is Cyberculture?
                     </button>
                     <span className="text-neutral-700" aria-hidden="true">|</span>
                     <button
                         onClick={onStartOver}
-                        className="text-neutral-300 hover:text-yellow-400 transition-colors duration-200 font-permanent-marker tracking-wide"
+                        className="text-neutral-300 hover:text-yellow-400 transition-colors duration-200 font-orbitron tracking-wide"
                     >
                         Start Over
                     </button>

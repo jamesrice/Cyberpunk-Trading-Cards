@@ -44,7 +44,7 @@ export async function createAlbumPage(imageData: Record<string, string>): Promis
     ctx.fillStyle = '#333';
     ctx.textAlign = 'center';
 
-    ctx.font = `100px 'Audiowide', sans-serif`;
+    ctx.font = `bold 100px 'Orbitron', sans-serif`;
     ctx.fillText('Generated with Cyberpunk Persona', canvasWidth / 2, 150);
 
     ctx.font = `50px 'Roboto', sans-serif`;
@@ -141,7 +141,7 @@ export async function createAlbumPage(imageData: Record<string, string>): Promis
         
         // Draw the handwritten caption
         ctx.fillStyle = '#222';
-        ctx.font = `60px 'Russo One', sans-serif`;
+        ctx.font = `bold 60px 'Orbitron', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 

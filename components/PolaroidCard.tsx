@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { DraggableCardContainer, DraggableCardBody } from './ui/draggable-card';
 import { cn } from '../lib/utils';
-import { PanInfo, motion } from 'framer-motion';
+import { PanInfo, motion, AnimatePresence } from 'framer-motion';
 import type { CardData } from '../services/geminiService';
 import { toJpeg } from 'html-to-image';
 
@@ -57,7 +57,7 @@ const Placeholder = () => (
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
-        <span className="font-permanent-marker text-xl">Upload Photo</span>
+        <span className="font-orbitron text-xl">Upload Photo</span>
     </div>
 );
 
@@ -67,18 +67,22 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
     const [isImageLoaded, setIsImageLoaded] = useState(false);
     const [isFlipped, setIsFlipped] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
-    const cardRef = useRef<HTMLDivElement>(null);
+    const [isCapturing, setIsCapturing] = useState(false);
     const frontFaceRef = useRef<HTMLDivElement>(null);
+    const prevImageUrl = useRef<string | undefined>();
     
     const lastShakeTime = useRef(0);
     const lastVelocity = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
-        if (status === 'pending' || (status === 'done' && imageUrl)) {
+        // If we have a new image URL, or if we enter the pending state, reset the "developing" effect.
+        if (status === 'pending' || (imageUrl && imageUrl !== prevImageUrl.current)) {
             setIsDeveloped(false);
             setIsImageLoaded(false);
             setIsFlipped(false); // Flip back to front on regenerate
         }
+        // Update the ref *after* the check for the next render cycle.
+        prevImageUrl.current = imageUrl;
     }, [imageUrl, status]);
 
     useEffect(() => {
@@ -122,12 +126,13 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
             return;
         }
         setIsDownloading(true);
+        // Temporarily flatten the card's 3D transforms and hide problematic
+        // CSS filters, blurs, and clip-paths to ensure html-to-image can capture it correctly.
+        setIsCapturing(true);
 
         try {
-            // This is a workaround for a race condition on some devices where the
-            // image animation/rendering isn't complete before capture. A small
-            // delay gives the browser time to finish painting.
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Allow React to re-render with the flattened styles before capturing.
+            await new Promise(resolve => setTimeout(resolve, 50));
             
             await document.fonts.ready;
             const dataUrl = await toJpeg(frontFaceRef.current, {
@@ -139,6 +144,7 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
             console.error('Failed to capture card image:', err);
         } finally {
             setIsDownloading(false);
+            setIsCapturing(false);
         }
     };
 
@@ -148,7 +154,7 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
             {status === 'error' && <ErrorDisplay cardData={cardData} />}
 
             <div className={cn(
-                "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
+                "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity",
                 // Hide buttons for placeholder card, during loading, or when flipped
                 (caption === "Click to begin" || status === 'pending' || isFlipped) && "opacity-0 pointer-events-none"
             )}>
@@ -222,24 +228,33 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
               ref.current = node;
             }
         }}
-        className="absolute w-full h-full bg-neutral-900 p-2 rounded-md shadow-lg" style={{ backfaceVisibility: 'hidden' }}
+        className="w-full h-full bg-neutral-900 p-2 rounded-md shadow-lg"
       >
         <div className="relative w-full h-full border-2 border-neutral-700/50 flex flex-col overflow-hidden">
           {/* Neon Glow Effect */}
-          <div className="absolute -inset-1 rounded-md bg-fuchsia-500/80 blur-lg -z-10"></div>
+          <div className={cn(
+            "absolute -inset-1 rounded-md bg-fuchsia-500/80 blur-lg -z-10",
+            isCapturing && "opacity-0"
+          )}></div>
 
           {/* Header */}
-          <header className="px-3 pt-2 pb-1 bg-black/30 backdrop-blur-sm border-b-2 border-neutral-700/50">
+          <header className={cn(
+              "px-3 pt-2 pb-1 bg-black/30 border-b-2 border-neutral-700/50",
+              !isCapturing && "backdrop-blur-sm"
+          )}>
               <div className="flex justify-between items-center">
                   <div className="font-roboto-mono text-xs uppercase text-cyan-300 bg-cyan-900/50 px-2 py-1 border border-cyan-500/50">
                       {cardData?.faction || (status === 'pending' ? '...' : 'N/A')}
                   </div>
-                  <div className="w-12 h-12 bg-neutral-900/80 border-2 border-neutral-600 flex items-center justify-center font-caveat text-2xl text-yellow-400" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'}}>
+                  <div 
+                    className="w-12 h-12 bg-neutral-900/80 border-2 border-neutral-600 flex items-center justify-center font-orbitron text-2xl text-yellow-400" 
+                    style={!isCapturing ? { clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'} : undefined}
+                  >
                       {cardData?.power || 0}
                   </div>
               </div>
                <div className="h-16 flex items-center justify-center mt-[-1rem]">
-                    <h2 className="font-caveat text-2xl text-center text-neutral-100 uppercase tracking-widest leading-tight">
+                    <h2 className="font-orbitron font-bold text-2xl text-center text-neutral-100 uppercase tracking-widest leading-tight">
                         {caption}
                     </h2>
                 </div>
@@ -254,9 +269,12 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
 
           {/* Footer */}
           {caption !== "Click to begin" && (
-            <footer className="px-3 pb-2 pt-1 bg-black/30 backdrop-blur-sm border-t-2 border-neutral-700/50">
+            <footer className={cn(
+                "px-3 pb-2 pt-1 bg-black/30 border-t-2 border-neutral-700/50",
+                !isCapturing && "backdrop-blur-sm"
+            )}>
                 <div className="bg-neutral-900/70 p-2 border border-neutral-600/80">
-                    <h3 className="font-permanent-marker text-sm text-yellow-400 uppercase tracking-wider">
+                    <h3 className="font-orbitron text-sm text-yellow-400 uppercase tracking-wider">
                       {cardData?.abilityName || '...'}
                     </h3>
                     <p className="font-roboto-mono text-xs text-neutral-300 leading-tight mt-1 h-10">
@@ -274,8 +292,8 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
     );
     
     const backFace = (
-        <div className="absolute w-full h-full bg-neutral-900 rounded-md shadow-lg p-4 flex flex-col text-green-400/90 font-mono text-xs overflow-hidden" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}>
-            <h3 className="text-base text-green-300 font-bold border-b border-green-400/30 pb-1 mb-2 font-permanent-marker tracking-wider">DOSSIER</h3>
+        <div className="w-full h-full bg-neutral-900 rounded-md shadow-lg p-4 flex flex-col text-green-400/90 font-mono text-xs overflow-hidden">
+            <h3 className="text-base text-green-300 font-bold border-b border-green-400/30 pb-1 mb-2 font-orbitron tracking-wider">DOSSIER</h3>
             <div className="flex-grow overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-green-800 scrollbar-track-transparent">
                 <p><span className="text-green-500 font-bold">Subject:</span> {caption}</p>
                 <p className="mt-1"><span className="text-green-500 font-bold">Origin:</span> {origin}</p>
@@ -287,19 +305,40 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
 
     const cardDimensions = "aspect-[0.72] h-[28rem]";
 
+    const cardContent = (
+        <div className="relative w-full h-full">
+            <AnimatePresence initial={false}>
+                {isFlipped ? (
+                    <motion.div
+                        key="back"
+                        className="absolute inset-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {backFace}
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="front"
+                        className="absolute inset-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {frontFace}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+
     if (isMobile) {
         return (
-            <div className={cn(cardDimensions, "w-full max-w-sm")} style={{ perspective: '1000px' }} onClick={handleFlip}>
-                <motion.div 
-                    ref={cardRef}
-                    className="relative w-full h-full"
-                    style={{ transformStyle: 'preserve-3d' }}
-                    animate={{ rotateY: isFlipped ? 180 : 0 }}
-                    transition={{ duration: 0.6 }}
-                >
-                    {frontFace}
-                    {backFace}
-                </motion.div>
+            <div className={cn(cardDimensions, "w-full max-w-sm")} onClick={handleFlip}>
+                {cardContent}
             </div>
         );
     }
@@ -313,17 +352,9 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
                 onDrag={handleDrag}
                 onTap={handleFlip}
                 onInteractionStart={onInteractionStart}
+                isCapturing={isCapturing}
             >
-                <motion.div
-                    ref={cardRef}
-                    className="w-full h-full"
-                    style={{ transformStyle: 'preserve-3d' }}
-                    animate={{ rotateY: isFlipped ? 180 : 0 }}
-                    transition={{ duration: 0.6 }}
-                >
-                   {frontFace}
-                   {backFace}
-                </motion.div>
+                {cardContent}
             </DraggableCardBody>
         </DraggableCardContainer>
     );

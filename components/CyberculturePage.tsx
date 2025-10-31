@@ -11,13 +11,13 @@ interface CyberculturePageProps {
 }
 
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <h2 className="font-permanent-marker text-2xl md:text-3xl text-cyan-300 pt-6 border-t border-cyan-500/30 mt-6">
+    <h2 className="font-orbitron font-semibold text-2xl md:text-3xl text-cyan-300 pt-6 border-t border-cyan-500/30 mt-6">
         {children}
     </h2>
 );
 
 const SubHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <h3 className="font-permanent-marker text-xl text-neutral-100 mt-6">
+    <h3 className="font-orbitron font-semibold text-xl text-neutral-100 mt-6">
         {children}
     </h3>
 );
@@ -38,8 +38,8 @@ const CyberculturePage: React.FC<CyberculturePageProps> = ({ onBack }) => {
             transition={{ duration: 0.5 }}
         >
             <div className="bg-black/40 backdrop-blur-md border border-neutral-700/50 p-6 md:p-8 rounded-lg max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-400/80 scrollbar-track-transparent">
-                <h1 className="font-nabla text-5xl md:text-7xl text-center mb-2 text-yellow-300">What is Cyberculture?</h1>
-                <h2 className="font-permanent-marker text-xl md:text-2xl text-neutral-300 text-center mb-8">
+                <h1 className="font-orbitron font-bold text-5xl md:text-7xl text-center mb-2 text-yellow-300">What is Cyberculture?</h1>
+                <h2 className="font-orbitron text-xl md:text-2xl text-neutral-300 text-center mb-8">
                     Understanding the Worlds Behind Cyberpunk Trading Cards
                 </h2>
                 

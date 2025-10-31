@@ -185,8 +185,8 @@ interface GeneratedImage {
     cardData?: CardData;
 }
 
-const primaryButtonClasses = "font-permanent-marker text-xl text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-yellow-600 disabled:transform-none";
-export const secondaryButtonClasses = "font-permanent-marker text-xl text-center text-white bg-white/10 backdrop-blur-sm border-2 border-white/80 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:rotate-2 hover:bg-white hover:text-black";
+const primaryButtonClasses = "font-orbitron tracking-wider text-lg text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-yellow-600 disabled:transform-none";
+export const secondaryButtonClasses = "font-orbitron tracking-wider text-lg text-center text-white bg-white/10 backdrop-blur-sm border-2 border-white/80 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:rotate-2 hover:bg-white hover:text-black";
 
 const useMediaQuery = (query: string) => {
     const [matches, setMatches] = useState(false);
@@ -421,7 +421,7 @@ function App() {
                             <span className="text-6xl md:text-8xl">Cyberpunk</span>
                             <span className="text-4xl md:text-8xl"> Trading Cards</span>
                         </h1>
-                        <p className="font-permanent-marker text-neutral-300 mt-2 text-xl tracking-wide">
+                        <p className="font-orbitron text-neutral-300 mt-2 text-xl tracking-wide">
                             {(appState === 'generating' || appState === 'results-shown')
                                 ? "Explore your cyberpunk avatars"
                                 : "Generate your own dark future from a photo"}
@@ -461,7 +461,7 @@ function App() {
                                     />
                                 </label>
                                 <input id="file-upload" type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
-                                <p className="mt-8 font-permanent-marker text-neutral-500 text-center max-w-xs text-lg">
+                                <p className="mt-8 font-orbitron text-neutral-500 text-center max-w-xs text-lg">
                                     Click the card to upload your photo and find your future.
                                 </p>
                             </motion.div>

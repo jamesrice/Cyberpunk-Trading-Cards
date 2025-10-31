@@ -22,7 +22,8 @@ export const DraggableCardBody = ({
   onDrag,
   onDragStart,
   onTap,
-  onInteractionStart
+  onInteractionStart,
+  isCapturing,
 }: {
   className?: string;
   children?: React.ReactNode;
@@ -31,6 +32,7 @@ export const DraggableCardBody = ({
   onDragStart?: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
   onTap?: (event: MouseEvent | TouchEvent | PointerEvent) => void;
   onInteractionStart?: () => void;
+  isCapturing?: boolean;
 }) => {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -142,10 +144,10 @@ export const DraggableCardBody = ({
         });
       }}
       style={{
-        rotateX,
-        rotateY,
+        rotateX: isCapturing ? 0 : rotateX,
+        rotateY: isCapturing ? 0 : rotateY,
         opacity,
-        willChange: "transform",
+        willChange: isCapturing ? "auto" : "transform",
       }}
       animate={controls}
       whileHover={{ scale: 1.02 }}
