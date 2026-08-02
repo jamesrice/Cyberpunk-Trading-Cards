@@ -153,12 +153,12 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
             {status === 'pending' && <LoadingSpinner />}
             {status === 'error' && <ErrorDisplay cardData={cardData} />}
 
-            <div className={cn(
-                "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity",
-                // Hide buttons for placeholder card, during loading, or when flipped
-                (caption === "Click to begin" || status === 'pending' || isFlipped) && "opacity-0 pointer-events-none"
-            )}>
-                {onDownload && status === 'done' && imageUrl && (
+            {/* Download button - always visible on done status (except placeholder/loading/flipped) */}
+            {onDownload && status === 'done' && imageUrl && (
+                <div className={cn(
+                    "absolute top-2 right-2 z-20 transition-opacity",
+                    (caption === "Click to begin" || status === 'pending' || isFlipped) && "opacity-0 pointer-events-none"
+                )}>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleDownload(); }}
                         disabled={isDownloading || !isDeveloped}
@@ -176,8 +176,15 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
                             </svg>
                         )}
                     </button>
-                )}
-                 {onShake && (status === 'done' || status === 'error') && (
+                </div>
+            )}
+            
+            {/* Regenerate button - desktop only, hidden on mobile */}
+            {!isMobile && onShake && (status === 'done' || status === 'error') && (
+                <div className={cn(
+                    "absolute top-14 right-2 z-20 transition-opacity",
+                    (caption === "Click to begin" || status === 'pending' || isFlipped) && "opacity-0 pointer-events-none"
+                )}>
                     <button
                         onClick={(e) => { e.stopPropagation(); onShake(caption); }}
                         disabled={status === 'pending'}
@@ -188,8 +195,8 @@ const CyberCard = forwardRef<HTMLDivElement, CyberCardProps>(({ imageUrl, captio
                             <path d="M16 2A14 14 0 1 0 26.1 23.3l-4.2-2.4A10 10 0 1 1 16 6V1l-7 6 7 6V6Z" />
                         </svg>
                     </button>
-                )}
-            </div>
+                </div>
+            )}
             
             {status === 'done' && imageUrl && (
                 <>
