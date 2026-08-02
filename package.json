@@ -11,17 +11,20 @@
     "deploy": "vite build && wrangler pages deploy dist --project-name cyberpunk-trading-cards"
   },
   "dependencies": {
-    "react-dom": "^19.1.1",
-    "react": "^19.1.1",
-    "tailwind-merge": "^3.3.1",
-    "framer-motion": "^12.23.12",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.23.12",
     "html-to-image": "1.11.11",
-    "jszip": "3.10.1"
+    "jszip": "3.10.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.25",
+    "tailwindcss": "^3.4.19",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "wrangler": "^4.68.1"
