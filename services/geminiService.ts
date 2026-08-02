@@ -2,16 +2,9 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI, Type } from "@google/genai";
-import type { GenerateContentResponse } from "@google/genai";
-
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// Gemini runs server-side now (see functions/api/*). The API key lives on the
+// Cloudflare Pages project as a secret and never reaches the browser — this
+// module only builds prompts and calls our own same-origin /api endpoints.
 
 export interface Archetype {
     title: string;
@@ -273,63 +266,10 @@ Final output must be an ultra-detailed professional fashion photograph, cinemati
 
 
 /**
- * Processes the Gemini API response, extracting the image or throwing an error if none is found.
- * @param response The response from the generateContent call.
- * @returns A data URL string for the generated image.
- */
-function processGeminiResponse(response: GenerateContentResponse): string {
-    const imagePartFromResponse = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
-
-    if (imagePartFromResponse?.inlineData) {
-        const { mimeType, data } = imagePartFromResponse.inlineData;
-        return `data:${mimeType};base64,${data}`;
-    }
-
-    const textResponse = response.text;
-    console.error("API did not return an image. Response:", textResponse);
-    throw new Error(`The AI model responded with text instead of an image: "${textResponse || 'No text response received.'}"`);
-}
-
-/**
- * A wrapper for the Gemini API call that includes a retry mechanism for internal server errors.
- * @param imagePart The image part of the request payload.
- * @param textPart The text part of the request payload.
- * @returns The GenerateContentResponse from the API.
- */
-async function callGeminiWithRetry(imagePart: object, textPart: object): Promise<GenerateContentResponse> {
-    const maxRetries = 3;
-    const initialDelay = 1000;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            return await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: { parts: [imagePart, textPart] },
-            });
-        } catch (error) {
-            console.error(`Error calling Gemini API (Attempt ${attempt}/${maxRetries}):`, error);
-            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-            // Check for common internal server error indicators
-            const isInternalError = errorMessage.includes('"code":500') || errorMessage.includes('INTERNAL') || errorMessage.includes('unavailable');
-
-            if (isInternalError && attempt < maxRetries) {
-                const delay = initialDelay * Math.pow(2, attempt - 1);
-                console.log(`Internal error detected. Retrying in ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-            }
-            throw error; // Re-throw if not a retriable error or if max retries are reached.
-        }
-    }
-    // This should be unreachable due to the loop and throw logic above.
-    throw new Error("Gemini API call failed after all retries.");
-}
-
-/**
- * Generates a styled image from a source image and a character archetype.
- * @param imageDataUrl A data URL string of the source image.
- * @param archetype The detailed character archetype object.
- * @returns A promise that resolves to a base64-encoded image data URL of the generated image.
+ * Generates a styled cyberpunk portrait from a source image and archetype.
+ * The Gemini call runs server-side (/api/generate-image) so the key never
+ * reaches the browser; the detailed prompt is still built here and sent up.
+ * Throws on failure so the caller can render the card's error state.
  */
 export async function generateStyledImage(imageDataUrl: string, archetype: Archetype): Promise<string> {
   const match = imageDataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
@@ -338,67 +278,61 @@ export async function generateStyledImage(imageDataUrl: string, archetype: Arche
   }
   const [, mimeType, base64Data] = match;
 
-    const imagePart = {
-        inlineData: { mimeType, data: base64Data },
-    };
+  let res: Response;
+  try {
+    res = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64Data, mimeType, prompt: createPrompt(archetype) }),
+    });
+  } catch (err) {
+    throw new Error(`Could not reach the image engine. ${err instanceof Error ? err.message : ''}`.trim());
+  }
 
-    try {
-        console.log(`Generating image for ${archetype.title}...`);
-        const textPart = { text: createPrompt(archetype) };
-        const response = await callGeminiWithRetry(imagePart, textPart);
-        return processGeminiResponse(response);
-    } catch (error) {
-        console.error(`An unrecoverable error occurred during image generation for ${archetype.title}:`, error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        throw new Error(`The AI model failed to generate an image. Details: ${errorMessage}`);
-    }
+  let data: { image?: string; error?: string };
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('The image engine returned an unreadable response.');
+  }
+  if (!data.image) {
+    throw new Error(data.error || 'The AI model failed to generate an image.');
+  }
+  return data.image;
 }
 
 /**
- * Generates thematic trading card game data for a given cyberpunk archetype.
- * @param archetype The character archetype object.
- * @returns A promise that resolves to a CardData object.
+ * Generates trading-card stats for an archetype via /api/generate-card.
+ * Always resolves: any failure yields a themed fallback card, so a single bad
+ * response never breaks the grid.
  */
 export async function generateCardData(archetype: Archetype): Promise<CardData> {
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `Based on the Cyberpunk Archetype "${archetype.title}" (${archetype.description}), generate thematic trading card game data.`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        abilityName: { type: Type.STRING, description: "A cool, punchy name for a special ability. Max 3 words." },
-                        abilityDescription: { type: Type.STRING, description: "A brief, evocative description of the ability. Max 25 words." },
-                        faction: { type: Type.STRING, description: "A fitting cyberpunk faction or syndicate name. E.g., 'Net-Stalkers', 'Chrome Legion', 'Bio-Dyne Inc.' Max 3 words." },
-                        power: { type: Type.INTEGER, description: "An attack/power score from 1 to 10." },
-                        defense: { type: Type.INTEGER, description: "A defense/health score from 1 to 10." },
-                        serialNumber: { type: Type.STRING, description: "A unique serial number, e.g., 'A/GEN 042/250 C'." }
-                    },
-                    required: ["abilityName", "abilityDescription", "faction", "power", "defense", "serialNumber"]
-                }
-            }
-        });
+  const fallback: CardData = {
+    abilityName: "DATA CORRUPTED",
+    abilityDescription: "Transmission from the old net failed. Unable to parse combat data.",
+    faction: "Unknown",
+    power: 0,
+    defense: 0,
+    serialNumber: "ERROR-404",
+  };
 
-        const jsonStr = response.text.trim();
-        const parsedData = JSON.parse(jsonStr);
-
-        // Basic validation to ensure the model returned correct types
-        if (typeof parsedData.power !== 'number' || typeof parsedData.defense !== 'number' || typeof parsedData.abilityName !== 'string') {
-            throw new Error("Model returned data with incorrect types.");
-        }
-        return parsedData as CardData;
-    } catch (e) {
-        console.error(`Failed to generate or parse card data for ${archetype.title}:`, e);
-        // Provide a fallback error object so the UI doesn't completely break
-        return {
-            abilityName: "DATA CORRUPTED",
-            abilityDescription: "Transmission from the old net failed. Unable to parse combat data.",
-            faction: "Unknown",
-            power: 0,
-            defense: 0,
-            serialNumber: "ERROR-404"
-        };
+  try {
+    const res = await fetch('/api/generate-card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: archetype.title, description: archetype.description }),
+    });
+    const data = (await res.json()) as Partial<CardData> & { error?: string };
+    if (data.error) {
+      console.error(`Card data error for ${archetype.title}: ${data.error}`);
+      return fallback;
     }
+    if (typeof data.power !== 'number' || typeof data.defense !== 'number' || typeof data.abilityName !== 'string') {
+      throw new Error("Model returned data with incorrect types.");
+    }
+    return data as CardData;
+  } catch (e) {
+    console.error(`Failed to generate or parse card data for ${archetype.title}:`, e);
+    return fallback;
+  }
 }

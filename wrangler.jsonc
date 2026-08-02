@@ -1,0 +1,13 @@
+{
+  // Cloudflare Pages. `npm run build` writes the static site to dist/, and the
+  // functions/ directory (the server-side Gemini proxy) is bundled automatically.
+  //
+  // Dashboard "Connect to Git": build command `npm run build`, output `dist`.
+  // CLI: `npm run deploy` (wraps `wrangler pages deploy`).
+  //
+  // Bind GEMINI_API_KEY as an environment variable / secret on the Pages project
+  // — it is used only by functions/api/*, never shipped to the browser.
+  "name": "cyberpunk-trading-cards",
+  "compatibility_date": "2026-08-02",
+  "pages_build_output_dir": "./dist"
+}

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React from 'react';
+import FictionTribeMark from './FictionTribeMark';
 
 interface FooterProps {
     onShowCyberculture: () => void;
@@ -16,17 +17,16 @@ const Footer: React.FC<FooterProps> = ({ onShowCyberculture, onStartOver }) => {
                 <div className="flex items-center gap-4 text-neutral-400">
                     <p>Powered by Gemini</p>
                     <span className="text-neutral-700" aria-hidden="true">|</span>
-                    <p>
-                        Created by{' '}
-                        <a
-                            href="https://fictiontribe.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-neutral-300 hover:text-yellow-400 transition-colors duration-200"
-                        >
-                            FICTION TRIBE
-                        </a>
-                    </p>
+                    <a
+                        href="https://fictiontribe.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="A product of Fiction Tribe"
+                        className="flex items-center gap-2 text-neutral-400 hover:text-yellow-400 transition-colors duration-200"
+                    >
+                        <span className="uppercase tracking-[0.18em] text-[10px] sm:text-[11px]">A product of</span>
+                        <FictionTribeMark className="h-3 w-auto" />
+                    </a>
                 </div>
                 <div className="flex items-center gap-4">
                     <button

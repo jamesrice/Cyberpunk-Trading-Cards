@@ -1,0 +1,8 @@
+# Local secret for `wrangler pages dev` (npm run preview:functions).
+# Copy to `.dev.vars` (gitignored) and paste your own key:
+#
+#   printf 'Paste your Gemini API key: '; read -rs key; printf '\n'; \
+#     printf 'GEMINI_API_KEY=%s\n' "$key" > .dev.vars; unset key
+#
+# Get a key at https://aistudio.google.com/apikey
+GEMINI_API_KEY=your-gemini-api-key-here

@@ -1,19 +1,17 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
       },
       plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
+      // NOTE: the Gemini key is intentionally NOT exposed to the client. It lives
+      // on the Cloudflare Pages project as a secret and is used only by the
+      // server-side functions in functions/api/. Never `define` it into the bundle.
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
